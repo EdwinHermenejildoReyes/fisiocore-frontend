@@ -24,4 +24,10 @@ export const expedienteRepository = {
 
   eliminarEvaluacion: (id) =>
     api.delete(`/expediente/evaluaciones/${id}/`),
+
+  subirFotoEvaluacion: (id, file) => {
+    const formData = new FormData()
+    formData.append('foto_postural', file)
+    return api.post(`/expediente/evaluaciones/${id}/subir-foto/`, formData).then((r) => r.data)
+  },
 }

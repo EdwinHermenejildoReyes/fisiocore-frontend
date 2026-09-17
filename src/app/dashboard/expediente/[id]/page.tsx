@@ -6,7 +6,7 @@ import Link from 'next/link'
 import {
   ChevronLeft, Save, Loader2, AlertCircle, CheckCircle2,
   User, Calendar, Clock, Activity, Plus, Trash2, ChevronDown, ChevronUp,
-  Search, X, ExternalLink,
+  Search, X, ExternalLink, Camera,
 } from 'lucide-react'
 import { expedienteRepository } from '@/repositories/expediente'
 import { ejerciciosRepository } from '@/repositories/ejercicios'
@@ -18,6 +18,7 @@ interface EvaluacionPostural {
   evaluacion_frontal: Record<string, { hallazgo: string; lado: string }>
   evaluacion_posterior: Record<string, { hallazgo: string; lado: string }>
   evaluacion_lateral: Record<string, { hallazgo: string; lado: string }>
+  foto_postural: string | null
   notas: string
 }
 
@@ -376,6 +377,24 @@ function EvaluacionCard({
   })
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [fotoUrl, setFotoUrl] = useState<string | null>(ev.foto_postural ?? null)
+  const [uploadingFoto, setUploadingFoto] = useState(false)
+  const fotoInputRef = useRef<HTMLInputElement>(null)
+
+  const handleFotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploadingFoto(true)
+    try {
+      const updated = await expedienteRepository.subirFotoEvaluacion(ev.id, file)
+      setFotoUrl(updated.foto_postural)
+    } catch {
+      // silencioso — no bloquea el flujo
+    } finally {
+      setUploadingFoto(false)
+      if (fotoInputRef.current) fotoInputRef.current.value = ''
+    }
+  }
 
   const setZona = (plano: PlanoPostural, zona: string, campo: 'hallazgo' | 'lado', valor: string) => {
     setForm((f) => ({
@@ -506,6 +525,60 @@ function EvaluacionCard({
             </div>
           ))}
 
+          {/* Foto postural */}
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+              Foto postural
+            </label>
+            <input
+              ref={fotoInputRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              className="hidden"
+              onChange={handleFotoChange}
+              disabled={uploadingFoto}
+            />
+            {fotoUrl ? (
+              <div className="relative inline-block">
+                <img
+                  src={fotoUrl}
+                  alt="Evaluación postural"
+                  className="max-h-56 rounded-xl border border-gray-200 object-contain cursor-pointer"
+                  onClick={() => window.open(fotoUrl, '_blank')}
+                />
+                <button
+                  type="button"
+                  onClick={() => fotoInputRef.current?.click()}
+                  disabled={uploadingFoto}
+                  className="absolute bottom-2 right-2 flex items-center gap-1.5 bg-white/90 hover:bg-white border border-gray-200 text-gray-700 px-2.5 py-1.5 rounded-lg text-xs font-medium shadow-sm transition-colors disabled:opacity-60"
+                >
+                  {uploadingFoto
+                    ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    : <Camera className="w-3.5 h-3.5" />}
+                  Cambiar foto
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => fotoInputRef.current?.click()}
+                disabled={uploadingFoto}
+                className="flex flex-col items-center gap-2 border-2 border-dashed border-gray-200 rounded-xl p-5 w-full hover:border-sky-300 hover:bg-sky-50/50 transition-colors disabled:opacity-60"
+              >
+                {uploadingFoto
+                  ? <Loader2 className="w-6 h-6 animate-spin text-sky-500" />
+                  : <Camera className="w-6 h-6 text-gray-400" />}
+                <span className="text-sm text-gray-500">
+                  {uploadingFoto ? 'Subiendo foto…' : 'Agregar foto postural'}
+                </span>
+                {!uploadingFoto && (
+                  <span className="text-xs text-gray-400">Tomar foto o subir desde galería</span>
+                )}
+              </button>
+            )}
+          </div>
+
           {/* Notas */}
           <div>
             <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Notas</label>
@@ -540,6 +613,23 @@ function NuevaEvaluacionForm({
   const [open, setOpen] = useState(false)
   const [form, setForm] = useState<EvalForm>(EVAL_EMPTY)
   const [saving, setSaving] = useState(false)
+  const [fotoFile, setFotoFile] = useState<File | null>(null)
+  const [fotoPreview, setFotoPreview] = useState<string | null>(null)
+  const fotoInputRef = useRef<HTMLInputElement>(null)
+
+  const handleFotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setFotoFile(file)
+    setFotoPreview(URL.createObjectURL(file))
+  }
+
+  const limpiarFoto = () => {
+    setFotoFile(null)
+    if (fotoPreview) URL.revokeObjectURL(fotoPreview)
+    setFotoPreview(null)
+    if (fotoInputRef.current) fotoInputRef.current.value = ''
+  }
 
   const setZona = (plano: PlanoPostural, zona: string, campo: 'hallazgo' | 'lado', valor: string) => {
     setForm((f) => ({
@@ -552,10 +642,14 @@ function NuevaEvaluacionForm({
     e.preventDefault()
     setSaving(true)
     try {
-      await expedienteRepository.crearEvaluacion({ ...form, sesion: sesionId })
+      const evaluacion = await expedienteRepository.crearEvaluacion({ ...form, sesion: sesionId })
+      if (fotoFile) {
+        try { await expedienteRepository.subirFotoEvaluacion(evaluacion.id, fotoFile) } catch {}
+      }
       onCreada()
       setOpen(false)
       setForm(EVAL_EMPTY)
+      limpiarFoto()
     } finally {
       setSaving(false)
     }
@@ -615,6 +709,46 @@ function NuevaEvaluacionForm({
           </div>
         </div>
       ))}
+
+      {/* Foto postural */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Foto postural <span className="text-gray-400 font-normal">(opcional)</span>
+        </label>
+        <input
+          ref={fotoInputRef}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          className="hidden"
+          onChange={handleFotoSelect}
+        />
+        {fotoPreview ? (
+          <div className="relative inline-block">
+            <img
+              src={fotoPreview}
+              alt="Vista previa"
+              className="max-h-40 rounded-xl border border-gray-200 object-contain"
+            />
+            <button
+              type="button"
+              onClick={limpiarFoto}
+              className="absolute top-1.5 right-1.5 bg-white/90 border border-gray-200 rounded-full p-0.5 text-gray-500 hover:text-red-500 transition-colors"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => fotoInputRef.current?.click()}
+            className="flex flex-col items-center gap-1.5 border-2 border-dashed border-gray-200 rounded-xl p-4 w-full hover:border-sky-300 hover:bg-sky-50/50 transition-colors"
+          >
+            <Camera className="w-5 h-5 text-gray-400" />
+            <span className="text-sm text-gray-500">Tomar foto o subir desde galería</span>
+          </button>
+        )}
+      </div>
 
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">Notas</label>
