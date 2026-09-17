@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { useDispatch, useSelector } from 'react-redux'
 import { useState, useEffect } from 'react'
 import {
@@ -21,16 +21,33 @@ import {
 import { logoutUser } from '@/store/auth/slices'
 import NotificationBell from '@/components/NotificationBell'
 
-const NAV_ITEMS = [
-  { href: '/dashboard',              label: 'Inicio',        icon: Home,          exact: true },
-  { href: '/dashboard/agenda',       label: 'Agenda',        icon: Calendar,      exact: false },
-  { href: '/dashboard/pacientes',    label: 'Pacientes',     icon: Users,         exact: false },
-  { href: '/dashboard/expediente',   label: 'Expediente',    icon: ClipboardList, exact: false },
-  { href: '/dashboard/ejercicios',   label: 'Ejercicios',    icon: Dumbbell,      exact: false },
-  { href: '/dashboard/pagos',        label: 'Cobros',        icon: CreditCard,    exact: false },
-  { href: '/dashboard/reportes',     label: 'Reportes',      icon: BarChart2,     exact: false },
-  { href: '/dashboard/configuracion',label: 'Configuración', icon: Settings,      exact: false },
+type NavItem = {
+  href: string
+  label: string
+  icon: React.ElementType
+  exact: boolean
+  roles: string[]   // roles que pueden ver este ítem; [] = todos
+}
+
+// roles: [] significa que todos los roles de staff tienen acceso
+const NAV_ITEMS: NavItem[] = [
+  { href: '/dashboard',               label: 'Inicio',        icon: Home,          exact: true,  roles: [] },
+  { href: '/dashboard/agenda',        label: 'Agenda',        icon: Calendar,      exact: false, roles: [] },
+  { href: '/dashboard/pacientes',     label: 'Pacientes',     icon: Users,         exact: false, roles: [] },
+  { href: '/dashboard/expediente',    label: 'Expediente',    icon: ClipboardList, exact: false, roles: ['admin', 'fisioterapeuta'] },
+  { href: '/dashboard/ejercicios',    label: 'Ejercicios',    icon: Dumbbell,      exact: false, roles: ['admin', 'fisioterapeuta'] },
+  { href: '/dashboard/pagos',         label: 'Cobros',        icon: CreditCard,    exact: false, roles: ['admin', 'recepcionista'] },
+  { href: '/dashboard/reportes',      label: 'Reportes',      icon: BarChart2,     exact: false, roles: [] },
+  { href: '/dashboard/configuracion', label: 'Configuración', icon: Settings,      exact: false, roles: ['admin'] },
 ]
+
+// Rutas protegidas: ruta → roles permitidos
+const ROUTE_PERMISSIONS: Record<string, string[]> = {
+  '/dashboard/expediente':    ['admin', 'fisioterapeuta'],
+  '/dashboard/ejercicios':    ['admin', 'fisioterapeuta'],
+  '/dashboard/pagos':         ['admin', 'recepcionista'],
+  '/dashboard/configuracion': ['admin'],
+}
 
 const ROL_LABEL: Record<string, string> = {
   admin:          'Administrador',
@@ -39,11 +56,27 @@ const ROL_LABEL: Record<string, string> = {
   paciente:       'Paciente',
 }
 
+function canAccess(rol: string, roles: string[]) {
+  return roles.length === 0 || roles.includes(rol)
+}
+
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
+  const router = useRouter()
   const dispatch = useDispatch()
   const { user } = useSelector((state: any) => state.auth)
   const [sidebarOpen, setSidebarOpen] = useState(false)
+
+  // Redirigir si el usuario intenta acceder a una ruta no permitida
+  useEffect(() => {
+    if (!user?.rol) return
+    const entry = Object.entries(ROUTE_PERMISSIONS).find(([route]) =>
+      pathname.startsWith(route)
+    )
+    if (entry && !canAccess(user.rol, entry[1])) {
+      router.replace('/dashboard')
+    }
+  }, [pathname, user?.rol, router])
 
   // Cierra el sidebar al navegar
   useEffect(() => { setSidebarOpen(false) }, [pathname])
@@ -85,7 +118,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
       {/* Nav */}
       <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
-        {NAV_ITEMS.map(({ href, label, icon: Icon, exact }) => {
+        {NAV_ITEMS.filter(item => canAccess(user?.rol ?? '', item.roles)).map(({ href, label, icon: Icon, exact }) => {
           const active = exact ? pathname === href : pathname.startsWith(href)
           return (
             <Link
