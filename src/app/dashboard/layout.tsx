@@ -17,6 +17,7 @@ import {
   Home,
   Menu,
   X,
+  Award,
 } from 'lucide-react'
 import { logoutUser } from '@/store/auth/slices'
 import NotificationBell from '@/components/NotificationBell'
@@ -37,6 +38,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/dashboard/expediente',    label: 'Expediente',    icon: ClipboardList, exact: false, roles: ['admin', 'fisioterapeuta'] },
   { href: '/dashboard/ejercicios',    label: 'Ejercicios',    icon: Dumbbell,      exact: false, roles: ['admin', 'fisioterapeuta'] },
   { href: '/dashboard/pagos',         label: 'Cobros',        icon: CreditCard,    exact: false, roles: ['admin', 'recepcionista'] },
+  { href: '/dashboard/beneficios',    label: 'Beneficios',    icon: Award,         exact: false, roles: ['admin', 'recepcionista'] },
   { href: '/dashboard/reportes',      label: 'Reportes',      icon: BarChart2,     exact: false, roles: [] },
   { href: '/dashboard/configuracion', label: 'Configuración', icon: Settings,      exact: false, roles: ['admin'] },
 ]
@@ -46,6 +48,7 @@ const ROUTE_PERMISSIONS: Record<string, string[]> = {
   '/dashboard/expediente':    ['admin', 'fisioterapeuta'],
   '/dashboard/ejercicios':    ['admin', 'fisioterapeuta'],
   '/dashboard/pagos':         ['admin', 'recepcionista'],
+  '/dashboard/beneficios':    ['admin', 'recepcionista'],
   '/dashboard/configuracion': ['admin'],
 }
 
