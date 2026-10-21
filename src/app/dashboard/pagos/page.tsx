@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import {
   CreditCard, Search, Plus, X, Loader2, RefreshCw, AlertCircle,
-  CheckCircle2, RotateCcw, DollarSign, Clock, Package, TrendingUp,
+  CheckCircle2, RotateCcw, DollarSign, Clock, Package, TrendingUp, Award,
 } from 'lucide-react'
 import { cobrosRepository } from '@/repositories/cobros'
 import { pacientesRepository } from '@/repositories/pacientes'
@@ -90,7 +90,7 @@ function ModalNuevoPago({ open, onClose, onCreado }: {
   open: boolean; onClose: () => void; onCreado: () => void
 }) {
   const [step, setStep] = useState<1 | 2 | 3>(1)
-  const [paciente, setPaciente] = useState<{ id: string; nombre: string } | null>(null)
+  const [paciente, setPaciente] = useState<{ id: string; nombre: string; grupo_nombre?: string | null } | null>(null)
   const [paquetes, setPaquetes] = useState<PaqueteRow[]>([])
   const [loadingPaq, setLoadingPaq] = useState(false)
   const [paquete, setPaquete] = useState<PaqueteRow | null>(null)
@@ -124,7 +124,7 @@ function ModalNuevoPago({ open, onClose, onCreado }: {
 
   const selectPaciente = (p: any) => {
     const nombre = p.nombre_completo ?? `${p.user?.nombres ?? ''} ${p.user?.apellidos ?? ''}`.trim()
-    setPaciente({ id: p.id, nombre })
+    setPaciente({ id: p.id, nombre, grupo_nombre: p.grupo_nombre ?? null })
     setBusq(''); setResultados([]); setStep(2); setLoadingPaq(true)
     cobrosRepository.listarPaquetes({ paciente: p.id })
       .then((data: any) => setPaquetes(Array.isArray(data) ? data : (data.results ?? [])))
@@ -242,9 +242,26 @@ function ModalNuevoPago({ open, onClose, onCreado }: {
                 </div>
               )}
               {!loadingPaq && paquetes.length === 0 && (
-                <div className="text-center py-8 text-gray-400 text-sm">
-                  <Package className="w-8 h-8 mx-auto mb-2 opacity-30" />
-                  Este paciente no tiene paquetes registrados.
+                <div className="space-y-3">
+                  <div className="text-center py-6 text-gray-400 text-sm">
+                    <Package className="w-8 h-8 mx-auto mb-2 opacity-30" />
+                    Este paciente no tiene paquetes registrados.
+                  </div>
+                  {paciente?.grupo_nombre && (
+                    <div className="flex gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+                      <Award className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+                      <div className="text-sm">
+                        <p className="font-medium text-amber-800">Paciente con beneficio de grupo</p>
+                        <p className="text-amber-700 mt-0.5">
+                          {paciente.nombre} pertenece al grupo <strong>{paciente.grupo_nombre}</strong>. Su cobro se gestiona en la sección de Beneficios.
+                        </p>
+                        <a href="/dashboard/beneficios"
+                          className="inline-block mt-2 text-xs font-semibold text-amber-700 underline underline-offset-2 hover:text-amber-900">
+                          Ir a Beneficios →
+                        </a>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
               {!loadingPaq && paquetes.length > 0 && (
