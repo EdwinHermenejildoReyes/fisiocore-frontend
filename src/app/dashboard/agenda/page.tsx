@@ -322,7 +322,7 @@ function NuevaCitaModal({ open, onClose, onSaved, fisioterapeutas, servicios, sa
                 onChange={set('duracion_minutos')}
                 className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent"
               >
-                {[15, 30, 45, 60, 90, 120].map((m) => (
+                {[15, 20, 30, 45, 60, 90, 120].map((m) => (
                   <option key={m} value={m}>{m} min</option>
                 ))}
               </select>
