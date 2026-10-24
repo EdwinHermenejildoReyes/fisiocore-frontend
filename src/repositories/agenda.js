@@ -13,6 +13,9 @@ export const agendaRepository = {
   actualizarCita: (id, data) =>
     api.patch(`/agenda/citas/${id}/`, data).then((r) => r.data),
 
+  eliminarCita: (id) =>
+    api.delete(`/agenda/citas/${id}/`).then((r) => r.data),
+
   cancelarCita: (id) =>
     api.post(`/agenda/citas/${id}/cancelar/`).then((r) => r.data),
 

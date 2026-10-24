@@ -7,7 +7,7 @@ import { es } from 'date-fns/locale'
 import {
   Plus, ChevronLeft, ChevronRight, X, Calendar as CalIcon,
   Clock, User, MapPin, FileText, CheckCircle2, XCircle,
-  AlertCircle, Loader2, RefreshCw, Search, CalendarClock, Pencil,
+  AlertCircle, Loader2, RefreshCw, Search, CalendarClock, Pencil, Trash2,
 } from 'lucide-react'
 import { agendaRepository } from '@/repositories/agenda'
 import { pacientesRepository } from '@/repositories/pacientes'
@@ -403,6 +403,7 @@ function DetalleCitaModal({ citaId, onClose, onUpdated }: {
   const [editDuracion, setEditDuracion] = useState('')
   const [editNotas, setEditNotas] = useState('')
   const [editError, setEditError] = useState('')
+  const [confirmandoEliminar, setConfirmandoEliminar] = useState(false)
 
   useEffect(() => {
     if (!citaId) return
@@ -447,6 +448,16 @@ function DetalleCitaModal({ citaId, onClose, onUpdated }: {
     setEditando(true)
   }
 
+  const eliminarCita = async () => {
+    if (!citaId) return
+    setActionLoading('eliminar')
+    try {
+      await agendaRepository.eliminarCita(citaId)
+      onUpdated()
+      onClose()
+    } catch {} finally { setActionLoading(null) }
+  }
+
   const guardarEdicion = async () => {
     if (!citaId) return
     setActionLoading('editar')
@@ -486,10 +497,46 @@ function DetalleCitaModal({ citaId, onClose, onUpdated }: {
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-md">
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
           <h2 className="text-lg font-semibold text-gray-900">Detalle de cita</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 p-1 rounded">
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setConfirmandoEliminar(true)}
+              className="text-red-400 hover:text-red-600 hover:bg-red-50 p-1.5 rounded transition-colors"
+              title="Eliminar cita"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+            <button onClick={onClose} className="text-gray-400 hover:text-gray-600 p-1 rounded">
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
+
+        {confirmandoEliminar && (
+          <div className="mx-6 mt-4 bg-red-50 border border-red-200 rounded-xl p-4 space-y-3">
+            <p className="text-sm font-semibold text-red-800 flex items-center gap-1.5">
+              <Trash2 className="w-4 h-4" />
+              ¿Eliminar esta cita permanentemente?
+            </p>
+            <p className="text-xs text-red-600">Esta acción no se puede deshacer.</p>
+            <div className="flex gap-2">
+              <button
+                onClick={eliminarCita}
+                disabled={!!actionLoading}
+                className="flex-1 flex items-center justify-center gap-1.5 bg-red-600 hover:bg-red-700 text-white py-2 rounded-lg text-sm font-semibold transition-colors disabled:opacity-60"
+              >
+                {actionLoading === 'eliminar' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                Sí, eliminar
+              </button>
+              <button
+                onClick={() => setConfirmandoEliminar(false)}
+                disabled={!!actionLoading}
+                className="px-4 py-2 border border-gray-200 text-gray-600 hover:bg-gray-50 rounded-lg text-sm transition-colors"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        )}
 
         <div className="p-6">
           {loading && (
