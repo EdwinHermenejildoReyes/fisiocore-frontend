@@ -1033,6 +1033,7 @@ export default function AgendaPage() {
           .rbc-today { background-color: #f0f9ff; }
           .rbc-event { border-radius: 6px !important; cursor: pointer; }
           .rbc-event:focus { outline: none; box-shadow: 0 0 0 2px #0ea5e9; }
+          .rbc-event-label { display: none; }
           .rbc-slot-selection { background-color: rgba(14,165,233,0.12); border-radius: 4px; }
           .rbc-time-content { border-top: 1px solid #e5e7eb; }
           .rbc-timeslot-group { min-height: 60px !important; border-bottom-color: #f3f4f6; }
@@ -1055,6 +1056,7 @@ export default function AgendaPage() {
           messages={MESSAGES}
           culture="es"
           eventPropGetter={eventStyleGetter}
+          dayLayoutAlgorithm="no-overlap"
           style={{ height: '100%' }}
           step={30}
           timeslots={2}
