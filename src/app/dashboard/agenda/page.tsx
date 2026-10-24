@@ -7,7 +7,7 @@ import { es } from 'date-fns/locale'
 import {
   Plus, ChevronLeft, ChevronRight, X, Calendar as CalIcon,
   Clock, User, MapPin, FileText, CheckCircle2, XCircle,
-  AlertCircle, Loader2, RefreshCw, Search, CalendarClock,
+  AlertCircle, Loader2, RefreshCw, Search, CalendarClock, Pencil,
 } from 'lucide-react'
 import { agendaRepository } from '@/repositories/agenda'
 import { pacientesRepository } from '@/repositories/pacientes'
@@ -399,11 +399,16 @@ function DetalleCitaModal({ citaId, onClose, onUpdated }: {
   const [reasignando, setReasignando] = useState(false)
   const [nuevaFechaHora, setNuevaFechaHora] = useState('')
   const [reasignarError, setReasignarError] = useState('')
+  const [editando, setEditando] = useState(false)
+  const [editDuracion, setEditDuracion] = useState('')
+  const [editNotas, setEditNotas] = useState('')
+  const [editError, setEditError] = useState('')
 
   useEffect(() => {
     if (!citaId) return
     setLoading(true)
     setReasignando(false)
+    setEditando(false)
     agendaRepository.obtenerCita(citaId)
       .then(setCita)
       .catch(() => setCita(null))
@@ -429,7 +434,33 @@ function DetalleCitaModal({ citaId, onClose, onUpdated }: {
     const adjusted = new Date(local.getTime() - offset * 60000)
     setNuevaFechaHora(adjusted.toISOString().slice(0, 16))
     setReasignarError('')
+    setEditando(false)
     setReasignando(true)
+  }
+
+  const iniciarEdicion = () => {
+    if (!cita) return
+    setEditDuracion(String(cita.duracion_minutos))
+    setEditNotas(cita.notas_internas ?? '')
+    setEditError('')
+    setReasignando(false)
+    setEditando(true)
+  }
+
+  const guardarEdicion = async () => {
+    if (!citaId) return
+    setActionLoading('editar')
+    setEditError('')
+    try {
+      await agendaRepository.actualizarCita(citaId, {
+        duracion_minutos: parseInt(editDuracion),
+        notas_internas: editNotas,
+      })
+      onUpdated()
+      onClose()
+    } catch (err: any) {
+      setEditError(err?.response?.data?.detail ?? 'No se pudo guardar los cambios.')
+    } finally { setActionLoading(null) }
   }
 
   const guardarReasignacion = async () => {
@@ -574,8 +605,63 @@ function DetalleCitaModal({ citaId, onClose, onUpdated }: {
                 </div>
               )}
 
+              {/* Panel de edición */}
+              {editando && (
+                <div className="border border-violet-200 bg-violet-50 rounded-xl p-4 space-y-3">
+                  <p className="text-sm font-semibold text-violet-800 flex items-center gap-1.5">
+                    <Pencil className="w-4 h-4" />
+                    Editar cita
+                  </p>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Duración</label>
+                    <select
+                      value={editDuracion}
+                      onChange={(e) => setEditDuracion(e.target.value)}
+                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 bg-white"
+                    >
+                      {[15, 20, 30, 45, 60, 90, 120].map((m) => (
+                        <option key={m} value={m}>{m} min</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Notas internas</label>
+                    <textarea
+                      value={editNotas}
+                      onChange={(e) => setEditNotas(e.target.value)}
+                      rows={2}
+                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 bg-white resize-none"
+                    />
+                  </div>
+                  {editError && (
+                    <p className="text-xs text-red-600 flex items-center gap-1">
+                      <AlertCircle className="w-3.5 h-3.5 shrink-0" />{editError}
+                    </p>
+                  )}
+                  <div className="flex gap-2">
+                    <button
+                      onClick={guardarEdicion}
+                      disabled={!!actionLoading}
+                      className="flex-1 flex items-center justify-center gap-1.5 bg-violet-600 hover:bg-violet-700 text-white py-2 rounded-lg text-sm font-semibold transition-colors disabled:opacity-60"
+                    >
+                      {actionLoading === 'editar'
+                        ? <Loader2 className="w-4 h-4 animate-spin" />
+                        : <CheckCircle2 className="w-4 h-4" />}
+                      Guardar
+                    </button>
+                    <button
+                      onClick={() => { setEditando(false); setEditError('') }}
+                      disabled={!!actionLoading}
+                      className="px-4 py-2 border border-gray-200 text-gray-600 hover:bg-gray-50 rounded-lg text-sm transition-colors"
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {/* Acciones */}
-              {!reasignando && cita.estado === 'pendiente' && (
+              {!reasignando && !editando && cita.estado === 'pendiente' && (
                 <div className="space-y-2 pt-2 border-t border-gray-100">
                   <div className="flex gap-2">
                     <button
@@ -599,18 +685,28 @@ function DetalleCitaModal({ citaId, onClose, onUpdated }: {
                       Cancelar cita
                     </button>
                   </div>
-                  <button
-                    onClick={iniciarReasignacion}
-                    disabled={!!actionLoading}
-                    className="w-full flex items-center justify-center gap-1.5 border border-sky-200 text-sky-700 hover:bg-sky-50 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-60"
-                  >
-                    <CalendarClock className="w-4 h-4" />
-                    Reprogramar
-                  </button>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={iniciarReasignacion}
+                      disabled={!!actionLoading}
+                      className="flex-1 flex items-center justify-center gap-1.5 border border-sky-200 text-sky-700 hover:bg-sky-50 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-60"
+                    >
+                      <CalendarClock className="w-4 h-4" />
+                      Reprogramar
+                    </button>
+                    <button
+                      onClick={iniciarEdicion}
+                      disabled={!!actionLoading}
+                      className="flex-1 flex items-center justify-center gap-1.5 border border-violet-200 text-violet-700 hover:bg-violet-50 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-60"
+                    >
+                      <Pencil className="w-4 h-4" />
+                      Editar
+                    </button>
+                  </div>
                 </div>
               )}
 
-              {!reasignando && cita.estado === 'confirmada' && (
+              {!reasignando && !editando && cita.estado === 'confirmada' && (
                 <div className="space-y-2 pt-2 border-t border-gray-100">
                   <div className="flex gap-2">
                     <button
@@ -634,14 +730,24 @@ function DetalleCitaModal({ citaId, onClose, onUpdated }: {
                       Cancelar cita
                     </button>
                   </div>
-                  <button
-                    onClick={iniciarReasignacion}
-                    disabled={!!actionLoading}
-                    className="w-full flex items-center justify-center gap-1.5 border border-sky-200 text-sky-700 hover:bg-sky-50 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-60"
-                  >
-                    <CalendarClock className="w-4 h-4" />
-                    Reprogramar
-                  </button>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={iniciarReasignacion}
+                      disabled={!!actionLoading}
+                      className="flex-1 flex items-center justify-center gap-1.5 border border-sky-200 text-sky-700 hover:bg-sky-50 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-60"
+                    >
+                      <CalendarClock className="w-4 h-4" />
+                      Reprogramar
+                    </button>
+                    <button
+                      onClick={iniciarEdicion}
+                      disabled={!!actionLoading}
+                      className="flex-1 flex items-center justify-center gap-1.5 border border-violet-200 text-violet-700 hover:bg-violet-50 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-60"
+                    >
+                      <Pencil className="w-4 h-4" />
+                      Editar
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
