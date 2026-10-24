@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback, useRef } from 'react'
+import { useSelector } from 'react-redux'
 import { Calendar, dateFnsLocalizer, Views, View } from 'react-big-calendar'
 import { format, parse, startOfWeek, getDay, addDays } from 'date-fns'
 import { es } from 'date-fns/locale'
@@ -404,6 +405,8 @@ function DetalleCitaModal({ citaId, onClose, onUpdated }: {
   const [editNotas, setEditNotas] = useState('')
   const [editError, setEditError] = useState('')
   const [confirmandoEliminar, setConfirmandoEliminar] = useState(false)
+  const { user } = useSelector((state: any) => state.auth)
+  const puedeEliminar = user?.rol === 'admin' || user?.rol === 'recepcionista'
 
   useEffect(() => {
     if (!citaId) return
@@ -498,13 +501,15 @@ function DetalleCitaModal({ citaId, onClose, onUpdated }: {
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
           <h2 className="text-lg font-semibold text-gray-900">Detalle de cita</h2>
           <div className="flex items-center gap-1">
-            <button
-              onClick={() => setConfirmandoEliminar(true)}
-              className="text-red-400 hover:text-red-600 hover:bg-red-50 p-1.5 rounded transition-colors"
-              title="Eliminar cita"
-            >
-              <Trash2 className="w-4 h-4" />
-            </button>
+            {puedeEliminar && (
+              <button
+                onClick={() => setConfirmandoEliminar(true)}
+                className="text-red-400 hover:text-red-600 hover:bg-red-50 p-1.5 rounded transition-colors"
+                title="Eliminar cita"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            )}
             <button onClick={onClose} className="text-gray-400 hover:text-gray-600 p-1 rounded">
               <X className="w-5 h-5" />
             </button>
