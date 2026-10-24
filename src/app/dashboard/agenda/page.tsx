@@ -1068,9 +1068,9 @@ export default function AgendaPage() {
           }}
           components={{
             event: ({ event }: { event: CitaEvento }) => (
-              <div className="text-xs leading-tight overflow-hidden h-full flex flex-col gap-0.5">
-                <span className="font-semibold truncate">{event.resource.paciente_nombre}</span>
-                <span className="opacity-80">{format(event.start, 'HH:mm')} – {format(event.end, 'HH:mm')}</span>
+              <div className="truncate text-xs leading-tight">
+                <Clock className="w-3 h-3 inline mr-0.5 opacity-80" />
+                {format(event.start, 'HH:mm')} · {event.resource.paciente_nombre}
               </div>
             ),
           }}
