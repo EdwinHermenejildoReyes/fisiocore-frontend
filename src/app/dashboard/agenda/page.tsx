@@ -1031,7 +1031,7 @@ export default function AgendaPage() {
           .rbc-toolbar { display: none; }
           .rbc-header { font-size: 12px; font-weight: 600; color: #6b7280; padding: 8px 4px; border-bottom: 1px solid #f3f4f6; }
           .rbc-today { background-color: #f0f9ff; }
-          .rbc-event { border-radius: 6px !important; cursor: pointer; margin-bottom: 2px !important; }
+          .rbc-event { border-radius: 6px !important; cursor: pointer; margin: 1px 2px 4px 2px !important; }
           .rbc-event:focus { outline: none; box-shadow: 0 0 0 2px #0ea5e9; }
           .rbc-event-label { display: none; }
           .rbc-slot-selection { background-color: rgba(14,165,233,0.12); border-radius: 4px; }
