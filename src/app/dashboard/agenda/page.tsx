@@ -1031,12 +1031,11 @@ export default function AgendaPage() {
           .rbc-toolbar { display: none; }
           .rbc-header { font-size: 12px; font-weight: 600; color: #6b7280; padding: 8px 4px; border-bottom: 1px solid #f3f4f6; }
           .rbc-today { background-color: #f0f9ff; }
-          .rbc-event { border-radius: 6px !important; cursor: pointer; min-height: 36px !important; }
+          .rbc-event { border-radius: 6px !important; cursor: pointer; }
           .rbc-event:focus { outline: none; box-shadow: 0 0 0 2px #0ea5e9; }
-          .rbc-event-content { overflow: hidden !important; height: 100%; }
           .rbc-slot-selection { background-color: rgba(14,165,233,0.12); border-radius: 4px; }
           .rbc-time-content { border-top: 1px solid #e5e7eb; }
-          .rbc-timeslot-group { border-bottom-color: #f3f4f6; }
+          .rbc-timeslot-group { min-height: 60px !important; border-bottom-color: #f3f4f6; }
           .rbc-time-slot { color: #9ca3af; font-size: 11px; }
           .rbc-off-range-bg { background: #f9fafb; }
           .rbc-show-more { color: #0ea5e9; font-weight: 600; font-size: 11px; }
@@ -1069,13 +1068,9 @@ export default function AgendaPage() {
           }}
           components={{
             event: ({ event }: { event: CitaEvento }) => (
-              <div className="flex flex-col h-full overflow-hidden px-0.5">
-                <span className="text-xs font-semibold leading-tight truncate">
-                  {event.resource.paciente_nombre}
-                </span>
-                <span className="text-[10px] opacity-80 leading-tight">
-                  {format(event.start, 'HH:mm')}–{format(event.end, 'HH:mm')}
-                </span>
+              <div className="text-xs leading-tight overflow-hidden h-full flex flex-col gap-0.5">
+                <span className="font-semibold truncate">{event.resource.paciente_nombre}</span>
+                <span className="opacity-80">{format(event.start, 'HH:mm')} – {format(event.end, 'HH:mm')}</span>
               </div>
             ),
           }}
