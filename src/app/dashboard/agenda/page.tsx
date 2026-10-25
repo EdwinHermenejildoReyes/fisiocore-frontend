@@ -419,12 +419,13 @@ function DetalleCitaModal({ citaId, onClose, onUpdated }: {
       .finally(() => setLoading(false))
   }, [citaId])
 
-  const doAction = async (action: 'confirmar' | 'completar' | 'cancelar') => {
+  const doAction = async (action: 'confirmar' | 'completar' | 'cancelar' | 'no_asistio') => {
     if (!citaId) return
     setActionLoading(action)
     try {
       if (action === 'confirmar') await agendaRepository.confirmarCita(citaId)
       else if (action === 'completar') await agendaRepository.completarCita(citaId)
+      else if (action === 'no_asistio') await agendaRepository.marcarNoAsistio(citaId)
       else await agendaRepository.cancelarCita(citaId)
       onUpdated()
       onClose()
@@ -755,6 +756,16 @@ function DetalleCitaModal({ citaId, onClose, onUpdated }: {
                       Editar
                     </button>
                   </div>
+                  <button
+                    onClick={() => doAction('no_asistio')}
+                    disabled={!!actionLoading}
+                    className="w-full flex items-center justify-center gap-1.5 border border-orange-200 text-orange-600 hover:bg-orange-50 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-60"
+                  >
+                    {actionLoading === 'no_asistio'
+                      ? <Loader2 className="w-4 h-4 animate-spin" />
+                      : <AlertCircle className="w-4 h-4" />}
+                    Paciente no asistió
+                  </button>
                 </div>
               )}
 
@@ -800,6 +811,16 @@ function DetalleCitaModal({ citaId, onClose, onUpdated }: {
                       Editar
                     </button>
                   </div>
+                  <button
+                    onClick={() => doAction('no_asistio')}
+                    disabled={!!actionLoading}
+                    className="w-full flex items-center justify-center gap-1.5 border border-orange-200 text-orange-600 hover:bg-orange-50 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-60"
+                  >
+                    {actionLoading === 'no_asistio'
+                      ? <Loader2 className="w-4 h-4 animate-spin" />
+                      : <AlertCircle className="w-4 h-4" />}
+                    Paciente no asistió
+                  </button>
                 </div>
               )}
             </div>

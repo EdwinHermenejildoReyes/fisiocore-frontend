@@ -25,6 +25,9 @@ export const agendaRepository = {
   completarCita: (id) =>
     api.post(`/agenda/citas/${id}/completar/`).then((r) => r.data),
 
+  marcarNoAsistio: (id) =>
+    api.post(`/agenda/citas/${id}/no_asistio/`).then((r) => r.data),
+
   resumenHoy: () =>
     api.get('/agenda/citas/resumen/').then((r) => r.data),
 
