@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from 'react'
 import {
   Award, ChevronLeft, ChevronRight, RefreshCw, Loader2,
   CheckCircle2, Clock, DollarSign, Users, AlertTriangle,
-  CheckCheck, X,
+  CheckCheck, X, Search,
 } from 'lucide-react'
 import { beneficiosRepository } from '@/repositories/beneficios'
 import { getErrorMessage } from '@/utils/errorMessages'
@@ -190,9 +190,10 @@ export default function BeneficiosPage() {
   const [error, setError] = useState<string | null>(null)
   const [modalPago, setModalPago] = useState<BeneficioRow | null>(null)
   const [tab, setTab] = useState<'mes' | 'historial'>('mes')
+  const [busqueda, setBusqueda] = useState('')
 
   // Historial
-  const [histPaciente, setHistPaciente] = useState('')
+  const [histNombre, setHistNombre] = useState('')
   const [histBeneficios, setHistBeneficios] = useState<BeneficioRow[]>([])
   const [histLoading, setHistLoading] = useState(false)
 
@@ -264,15 +265,21 @@ export default function BeneficiosPage() {
   const configActual = configs.find((c) => c.grupo === grupoSel)
   const esObligatorio = configActual?.meses_obligatorios.includes(mes) ?? false
 
-  // Historial: cargar al buscar paciente
+  // Historial: buscar por nombre de atleta
   const buscarHistorial = () => {
-    if (!histPaciente.trim()) return
+    if (!histNombre.trim()) return
     setHistLoading(true)
-    beneficiosRepository.listarMensual({ paciente: histPaciente.trim() })
+    beneficiosRepository.listarMensual({ nombre: histNombre.trim() })
       .then((d) => setHistBeneficios(Array.isArray(d) ? d : (d.results ?? [])))
       .catch(() => setHistBeneficios([]))
       .finally(() => setHistLoading(false))
   }
+
+  const beneficiosFiltrados = busqueda.trim()
+    ? beneficios.filter((b) =>
+        b.paciente_nombre.toLowerCase().includes(busqueda.toLowerCase())
+      )
+    : beneficios
 
   return (
     <div className="p-6 max-w-6xl mx-auto space-y-6">
@@ -380,6 +387,20 @@ export default function BeneficiosPage() {
             </div>
           )}
 
+          {/* ── Búsqueda ── */}
+          {beneficios.length > 0 && (
+            <div className="relative w-full sm:w-72">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+              <input
+                type="text"
+                value={busqueda}
+                onChange={(e) => setBusqueda(e.target.value)}
+                placeholder="Buscar atleta…"
+                className="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
+              />
+            </div>
+          )}
+
           {/* ── Tabla ── */}
           <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
             {loading ? (
@@ -392,11 +413,17 @@ export default function BeneficiosPage() {
                 <p className="text-sm">No hay registros para este mes.</p>
                 <p className="text-xs mt-1">Usa "Generar mes" para crear los registros del grupo.</p>
               </div>
+            ) : beneficiosFiltrados.length === 0 ? (
+              <div className="text-center py-12 text-gray-400 text-sm">
+                No se encontró ningún atleta con ese nombre.
+              </div>
             ) : (
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-gray-100 bg-gray-50">
-                    <th className="text-left px-5 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wide">Atleta</th>
+                    <th className="text-left px-5 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wide">
+                      Atleta {busqueda && <span className="normal-case font-normal text-sky-600">({beneficiosFiltrados.length} de {beneficios.length})</span>}
+                    </th>
                     <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wide">Estado</th>
                     <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wide">Sesiones</th>
                     <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wide">Monto</th>
@@ -405,7 +432,7 @@ export default function BeneficiosPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
-                  {beneficios.map((b) => (
+                  {beneficiosFiltrados.map((b) => (
                     <tr key={b.id} className="hover:bg-gray-50 transition-colors">
                       <td className="px-5 py-3">
                         <p className="font-medium text-gray-900">{b.paciente_nombre}</p>
@@ -467,14 +494,17 @@ export default function BeneficiosPage() {
       {tab === 'historial' && (
         <div className="space-y-4">
           <div className="flex items-center gap-3">
-            <input
-              type="text"
-              value={histPaciente}
-              onChange={(e) => setHistPaciente(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && buscarHistorial()}
-              placeholder="ID de paciente…"
-              className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 w-72"
-            />
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+              <input
+                type="text"
+                value={histNombre}
+                onChange={(e) => setHistNombre(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && buscarHistorial()}
+                placeholder="Nombre del atleta…"
+                className="pl-9 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 w-72"
+              />
+            </div>
             <button
               onClick={buscarHistorial}
               disabled={histLoading}
@@ -488,7 +518,7 @@ export default function BeneficiosPage() {
           <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
             {histBeneficios.length === 0 ? (
               <div className="text-center py-16 text-gray-400 text-sm">
-                Ingresa el ID del paciente para ver su historial de beneficios.
+                Busca un atleta por nombre para ver su historial de beneficios.
               </div>
             ) : (
               <table className="w-full text-sm">
