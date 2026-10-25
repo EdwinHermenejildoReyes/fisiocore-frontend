@@ -191,6 +191,10 @@ export default function BeneficiosPage() {
   const [modalPago, setModalPago] = useState<BeneficioRow | null>(null)
   const [tab, setTab] = useState<'mes' | 'historial'>('mes')
   const [busqueda, setBusqueda] = useState('')
+  const [pagina, setPagina] = useState(1)
+  const PAGE_SIZE = 20
+
+  const handleBusqueda = (v: string) => { setBusqueda(v); setPagina(1) }
 
   // Historial
   const [histNombre, setHistNombre] = useState('')
@@ -280,6 +284,12 @@ export default function BeneficiosPage() {
         b.paciente_nombre.toLowerCase().includes(busqueda.toLowerCase())
       )
     : beneficios
+
+  const totalPaginas = Math.ceil(beneficiosFiltrados.length / PAGE_SIZE)
+  const beneficiosPagina = beneficiosFiltrados.slice(
+    (pagina - 1) * PAGE_SIZE,
+    pagina * PAGE_SIZE,
+  )
 
   return (
     <div className="p-6 max-w-6xl mx-auto space-y-6">
@@ -394,7 +404,7 @@ export default function BeneficiosPage() {
               <input
                 type="text"
                 value={busqueda}
-                onChange={(e) => setBusqueda(e.target.value)}
+                onChange={(e) => handleBusqueda(e.target.value)}
                 placeholder="Buscar atleta…"
                 className="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
               />
@@ -432,7 +442,7 @@ export default function BeneficiosPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
-                  {beneficiosFiltrados.map((b) => (
+                  {beneficiosPagina.map((b) => (
                     <tr key={b.id} className="hover:bg-gray-50 transition-colors">
                       <td className="px-5 py-3">
                         <p className="font-medium text-gray-900">{b.paciente_nombre}</p>
@@ -488,6 +498,55 @@ export default function BeneficiosPage() {
               </table>
             )}
           </div>
+
+          {/* ── Paginación ── */}
+          {totalPaginas > 1 && (
+            <div className="flex items-center justify-between text-sm text-gray-500">
+              <span>
+                Mostrando {(pagina - 1) * PAGE_SIZE + 1}–{Math.min(pagina * PAGE_SIZE, beneficiosFiltrados.length)} de {beneficiosFiltrados.length} atletas
+              </span>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => setPagina((p) => Math.max(1, p - 1))}
+                  disabled={pagina === 1}
+                  className="p-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  <ChevronLeft size={15} />
+                </button>
+                {Array.from({ length: totalPaginas }, (_, i) => i + 1)
+                  .filter((n) => n === 1 || n === totalPaginas || Math.abs(n - pagina) <= 1)
+                  .reduce<(number | 'ellipsis')[]>((acc, n, idx, arr) => {
+                    if (idx > 0 && n - (arr[idx - 1] as number) > 1) acc.push('ellipsis')
+                    acc.push(n)
+                    return acc
+                  }, [])
+                  .map((n, i) =>
+                    n === 'ellipsis' ? (
+                      <span key={`e${i}`} className="px-1 text-gray-400">…</span>
+                    ) : (
+                      <button
+                        key={n}
+                        onClick={() => setPagina(n as number)}
+                        className={`w-8 h-8 rounded-lg text-xs font-medium transition-colors ${
+                          n === pagina
+                            ? 'bg-sky-600 text-white'
+                            : 'border border-gray-200 hover:bg-gray-50 text-gray-600'
+                        }`}
+                      >
+                        {n}
+                      </button>
+                    )
+                  )}
+                <button
+                  onClick={() => setPagina((p) => Math.min(totalPaginas, p + 1))}
+                  disabled={pagina === totalPaginas}
+                  className="p-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  <ChevronRight size={15} />
+                </button>
+              </div>
+            </div>
+          )}
         </>
       )}
 
