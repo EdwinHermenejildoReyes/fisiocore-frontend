@@ -4,9 +4,10 @@ import { useEffect, useState, useCallback } from 'react'
 import {
   Award, ChevronLeft, ChevronRight, RefreshCw, Loader2,
   CheckCircle2, Clock, DollarSign, Users, AlertTriangle,
-  CheckCheck, X, Search,
+  CheckCheck, X, Search, CalendarDays,
 } from 'lucide-react'
 import { beneficiosRepository } from '@/repositories/beneficios'
+import { agendaRepository } from '@/repositories/agenda'
 import { getErrorMessage } from '@/utils/errorMessages'
 
 /* ── Tipos ── */
@@ -66,6 +67,67 @@ const METODO_LABEL: Record<string, string> = {
 
 function fmt(v: string | number) {
   return `$${Number(v).toLocaleString('es-EC', { minimumFractionDigits: 2 })}`
+}
+
+/* ── Modal: Detalle de sesiones ── */
+function SesionesDetalleModal({ paciente_nombre, año, mes, nombre_mes, citas, loading, onClose }: {
+  paciente_nombre: string
+  año: number
+  mes: number
+  nombre_mes: string
+  citas: any[]
+  loading: boolean
+  onClose: () => void
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+          <div>
+            <h3 className="font-semibold text-gray-900 text-sm">{paciente_nombre}</h3>
+            <p className="text-xs text-gray-400 mt-0.5">Sesiones completadas · {nombre_mes} {año}</p>
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 p-1 rounded-lg hover:bg-gray-100">
+            <X size={17} />
+          </button>
+        </div>
+        <div className="px-6 py-4">
+          {loading ? (
+            <div className="flex justify-center py-8">
+              <Loader2 className="w-5 h-5 animate-spin text-gray-400" />
+            </div>
+          ) : citas.length === 0 ? (
+            <p className="text-sm text-gray-400 text-center py-6">No hay sesiones completadas este mes.</p>
+          ) : (
+            <ul className="space-y-2">
+              {citas.map((c: any, i: number) => {
+                const fecha = new Date(c.fecha_hora)
+                const dia = fecha.toLocaleDateString('es-EC', { weekday: 'long', day: 'numeric', month: 'long' })
+                const hora = fecha.toLocaleTimeString('es-EC', { hour: '2-digit', minute: '2-digit' })
+                return (
+                  <li key={c.id} className="flex items-center gap-3 bg-gray-50 rounded-xl px-4 py-2.5">
+                    <span className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 text-xs font-bold flex items-center justify-center shrink-0">
+                      {i + 1}
+                    </span>
+                    <div>
+                      <p className="text-sm font-medium text-gray-800 capitalize">{dia}</p>
+                      <p className="text-xs text-gray-400">{hora} · {c.servicio_nombre ?? 'Sesión'}</p>
+                    </div>
+                  </li>
+                )
+              })}
+            </ul>
+          )}
+        </div>
+        <div className="px-6 pb-4">
+          <button onClick={onClose}
+            className="w-full border border-gray-200 text-gray-600 py-2 rounded-lg text-sm font-medium hover:bg-gray-50">
+            Cerrar
+          </button>
+        </div>
+      </div>
+    </div>
+  )
 }
 
 /* ── StatCard ── */
@@ -193,8 +255,28 @@ export default function BeneficiosPage() {
   const [busqueda, setBusqueda] = useState('')
   const [pagina, setPagina] = useState(1)
   const PAGE_SIZE = 20
+  const [sesionesModal, setSesionesModal] = useState<{ beneficio: BeneficioRow; citas: any[]; loading: boolean } | null>(null)
 
   const handleBusqueda = (v: string) => { setBusqueda(v); setPagina(1) }
+
+  const verSesiones = async (b: BeneficioRow) => {
+    setSesionesModal({ beneficio: b, citas: [], loading: true })
+    try {
+      const lastDay = new Date(b.año, b.mes, 0).getDate()
+      const fecha_inicio = `${b.año}-${String(b.mes).padStart(2, '0')}-01`
+      const fecha_fin = `${b.año}-${String(b.mes).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`
+      const data = await agendaRepository.listarCitas({
+        paciente: b.paciente_id,
+        fecha_inicio,
+        fecha_fin,
+        estado: 'completada',
+      })
+      const list = Array.isArray(data) ? data : (data.results ?? [])
+      setSesionesModal({ beneficio: b, citas: list, loading: false })
+    } catch {
+      setSesionesModal((s) => s ? { ...s, loading: false } : null)
+    }
+  }
 
   // Historial
   const [histNombre, setHistNombre] = useState('')
@@ -461,8 +543,21 @@ export default function BeneficiosPage() {
                           </span>
                         )}
                       </td>
-                      <td className="px-4 py-3 text-gray-600">
-                        {b.sesiones_usadas}/{configActual?.sesiones_incluidas ?? '—'}
+                      <td className="px-4 py-3">
+                        {b.sesiones_usadas > 0 ? (
+                          <button
+                            onClick={() => verSesiones(b)}
+                            className="inline-flex items-center gap-1.5 text-sm font-medium text-emerald-700 hover:text-emerald-800 hover:underline"
+                            title="Ver fechas de sesiones"
+                          >
+                            <CalendarDays size={13} />
+                            {b.sesiones_usadas}/{configActual?.sesiones_incluidas ?? '—'}
+                          </button>
+                        ) : (
+                          <span className="text-sm text-gray-400">
+                            0/{configActual?.sesiones_incluidas ?? '—'}
+                          </span>
+                        )}
                       </td>
                       <td className="px-4 py-3 font-medium text-gray-900">{fmt(b.monto)}</td>
                       <td className="px-4 py-3 text-gray-500">
@@ -622,6 +717,17 @@ export default function BeneficiosPage() {
         </div>
       )}
 
+      {sesionesModal && (
+        <SesionesDetalleModal
+          paciente_nombre={sesionesModal.beneficio.paciente_nombre}
+          año={sesionesModal.beneficio.año}
+          mes={sesionesModal.beneficio.mes}
+          nombre_mes={sesionesModal.beneficio.nombre_mes}
+          citas={sesionesModal.citas}
+          loading={sesionesModal.loading}
+          onClose={() => setSesionesModal(null)}
+        />
+      )}
       <ModalMarcarPagado
         beneficio={modalPago}
         onClose={() => setModalPago(null)}
