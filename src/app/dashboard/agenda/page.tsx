@@ -9,6 +9,7 @@ import {
   Plus, ChevronLeft, ChevronRight, X, Calendar as CalIcon,
   Clock, User, MapPin, FileText, CheckCircle2, XCircle,
   AlertCircle, Loader2, RefreshCw, Search, CalendarClock, Pencil, Trash2,
+  UserPlus,
 } from 'lucide-react'
 import { agendaRepository } from '@/repositories/agenda'
 import { pacientesRepository } from '@/repositories/pacientes'
@@ -73,6 +74,113 @@ function EstadoBadge({ estado }: { estado: string }) {
   )
 }
 
+/* ── Modal: Crear paciente rápido ── */
+function CrearPacienteRapidoModal({ onClose, onCreado }: {
+  onClose: () => void
+  onCreado: (p: PacienteResult) => void
+}) {
+  const [form, setForm] = useState({ nombres: '', apellidos: '', email: '', cedula: '', telefono: '' })
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const set = (field: string) => (e: React.ChangeEvent<HTMLInputElement>) =>
+    setForm((f) => ({ ...f, [field]: e.target.value }))
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!form.nombres.trim() || !form.apellidos.trim() || !form.email.trim()) {
+      setError('Nombres, apellidos y email son obligatorios.')
+      return
+    }
+    setSaving(true)
+    setError(null)
+    try {
+      const res = await pacientesRepository.crear({
+        nombres: form.nombres.trim(),
+        apellidos: form.apellidos.trim(),
+        email: form.email.trim(),
+        ...(form.cedula.trim() && { cedula: form.cedula.trim() }),
+        ...(form.telefono.trim() && { telefono: form.telefono.trim() }),
+      })
+      onCreado({
+        id: res.id,
+        nombre_completo: `${form.nombres.trim()} ${form.apellidos.trim()}`,
+        cedula: form.cedula.trim(),
+      })
+    } catch (err: any) {
+      const d = err?.response?.data
+      if (d?.email) setError(Array.isArray(d.email) ? d.email[0] : d.email)
+      else if (d?.detail) setError(d.detail)
+      else setError('No se pudo crear el paciente.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+          <div className="flex items-center gap-2">
+            <UserPlus className="w-4 h-4 text-sky-600" />
+            <h3 className="font-semibold text-gray-900 text-sm">Nuevo paciente</h3>
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 p-1 rounded">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+        <form onSubmit={handleSubmit} className="px-6 py-5 space-y-3">
+          {error && (
+            <div className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+              {error}
+            </div>
+          )}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">Nombres <span className="text-red-400">*</span></label>
+              <input value={form.nombres} onChange={set('nombres')} placeholder="Juan"
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500" />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">Apellidos <span className="text-red-400">*</span></label>
+              <input value={form.apellidos} onChange={set('apellidos')} placeholder="Pérez"
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500" />
+            </div>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">Email <span className="text-red-400">*</span></label>
+            <input type="email" value={form.email} onChange={set('email')} placeholder="juan@email.com"
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500" />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">Cédula</label>
+              <input value={form.cedula} onChange={set('cedula')} placeholder="0912345678"
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500" />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">Teléfono</label>
+              <input value={form.telefono} onChange={set('telefono')} placeholder="0991234567"
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500" />
+            </div>
+          </div>
+          <div className="flex gap-3 pt-1">
+            <button type="button" onClick={onClose}
+              className="flex-1 border border-gray-200 text-gray-600 py-2 rounded-lg text-sm font-medium hover:bg-gray-50">
+              Cancelar
+            </button>
+            <button type="submit" disabled={saving}
+              className="flex-1 bg-sky-600 text-white py-2 rounded-lg text-sm font-medium hover:bg-sky-700 disabled:opacity-50 flex items-center justify-center gap-2">
+              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserPlus className="w-4 h-4" />}
+              Crear paciente
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
 /* ── Buscador de pacientes ── */
 function PacienteBuscador({ value, onChange }: {
   value: PacienteResult | null
@@ -82,6 +190,7 @@ function PacienteBuscador({ value, onChange }: {
   const [resultados, setResultados] = useState<PacienteResult[]>([])
   const [open, setOpen] = useState(false)
   const [buscando, setBuscando] = useState(false)
+  const [modalCrear, setModalCrear] = useState(false)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const containerRef = useRef<HTMLDivElement>(null)
 
@@ -158,9 +267,23 @@ function PacienteBuscador({ value, onChange }: {
         </div>
       )}
       {open && !buscando && q.length >= 2 && resultados.length === 0 && (
-        <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg px-4 py-3 text-sm text-gray-400">
-          Sin resultados para "{q}"
+        <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden">
+          <p className="px-4 py-2.5 text-sm text-gray-400">Sin resultados para "{q}"</p>
+          <button
+            type="button"
+            onClick={() => { setOpen(false); setModalCrear(true) }}
+            className="w-full flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-sky-700 bg-sky-50 hover:bg-sky-100 transition-colors border-t border-gray-100"
+          >
+            <UserPlus className="w-4 h-4" />
+            Crear nuevo paciente "{q}"
+          </button>
         </div>
+      )}
+      {modalCrear && (
+        <CrearPacienteRapidoModal
+          onClose={() => setModalCrear(false)}
+          onCreado={(p) => { onChange(p); setModalCrear(false); setQ('') }}
+        />
       )}
     </div>
   )
